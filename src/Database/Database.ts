@@ -8,9 +8,13 @@ interface IData {
     name?: string;
     number?: number;
 }
-const pathToData = '/data.txt'
 export class DataBase {
-    constructor(public path: string, public id: number) { }
+    constructor(private path: string, private id: number, private pathToData: string) {
+
+        this.path = path;
+        this.id = id;
+        this.pathToData = pathToData;
+    }
 
     async createDatabase(): Promise<string | Error> {
         try {
@@ -23,10 +27,10 @@ export class DataBase {
         }
     }
 
-    async getData(path: string): Promise<IData[]> {
+    async getData(): Promise<IData[]> {
 
         const newArr: IData[] = [];
-        const filePath = await this.getPath() + path;
+        const filePath = await this.getPath() + this.pathToData;
         const data: string = await fs.readFile(filePath, 'utf-8');
         const readedData = data.split(';');
         if (readedData.length > 0) {
@@ -63,7 +67,7 @@ export class DataBase {
     async addData(data: IData): Promise<string> {
         if (data) {
             const dataToAdd = `${uuidv4()} ${data.name} ${data.number};`;
-            const filePath = await this.getPath() + pathToData;
+            const filePath = await this.getPath() + this.pathToData;
 
             try {
                 const fileExists = await fs
@@ -89,7 +93,7 @@ export class DataBase {
     }
 
     async findById(id: string): Promise<IData | null> {
-        const data: IData[] = await this.getData(pathToData);
+        const data: IData[] = await this.getData();
         let result: IData | null = null;
         if (data.length > 0) {
             for (let i = 0; i < data.length; i++) {
@@ -107,7 +111,7 @@ export class DataBase {
     }
 
     async findByIdAndUpdate(id: string, obj: IData): Promise<IData | null> {
-        const data: IData[] = await this.getData(pathToData);
+        const data: IData[] = await this.getData();
         let newObj: IData | null = null;
         if (obj !== null) {
             for (let i = 0; i < data.length; i++) {
@@ -125,7 +129,7 @@ export class DataBase {
     }
 
     async findOne(id: string, obj?: IData): Promise<IData | undefined> {
-        const data = await this.getData(pathToData);
+        const data = await this.getData();
         const found: IData | undefined = data.find(item => item.id === id);
         if (obj !== null) {
             let newObj: IData | undefined;
@@ -145,7 +149,7 @@ export class DataBase {
     }
 
     async removeData(id: string, path: string): Promise<IData | undefined> {
-        const data: IData[] = await this.getData(path);
+        const data: IData[] = await this.getData();
         let dataToAdd = '';
         if (data.length > 0) {
             const found = data.find((item: IData) => item.id === id);
