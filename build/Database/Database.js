@@ -7,6 +7,7 @@ exports.DataBase = void 0;
 const promises_1 = __importDefault(require("fs/promises"));
 const make_dir_1 = __importDefault(require("make-dir"));
 const uuid_1 = require("uuid");
+const pathToData = '/data.txt';
 class DataBase {
     constructor(path, id) {
         this.path = path;
@@ -33,10 +34,11 @@ class DataBase {
                 if (readedData[i] === '') {
                     continue;
                 }
+                const [id, name, number] = readedData[i].split(' ');
                 const newObj = {
-                    id: readedData[i].split(' ')[0],
-                    name: readedData[i].split(' ')[1],
-                    number: readedData[i].split(' ')[2]
+                    id,
+                    name,
+                    number: parseInt(number)
                 };
                 newArr.push(newObj);
             }
@@ -57,8 +59,8 @@ class DataBase {
     }
     async addData(data) {
         if (data) {
-            const dataToAdd = (0, uuid_1.v4)() + " " + data.name + " " + data.number + ";";
-            const filePath = await this.getPath() + '/data.txt';
+            const dataToAdd = `${(0, uuid_1.v4)()} ${data.name} ${data.number};`;
+            const filePath = await this.getPath() + pathToData;
             try {
                 const fileExists = await promises_1.default
                     .access(filePath)
@@ -70,11 +72,11 @@ class DataBase {
                 else {
                     await promises_1.default.writeFile(filePath, dataToAdd);
                 }
-                console.log('Data aded to file :', filePath);
+                console.log('Data added to file:', filePath);
                 return 'success';
             }
             catch (error) {
-                console.error('cant write to file:', error);
+                console.error('Unable to write to file:', error);
                 return 'error';
             }
         }
@@ -82,9 +84,62 @@ class DataBase {
             return 'no file to add';
         }
     }
+    async findById(id) {
+        const data = await this.getData(pathToData);
+        let result = null;
+        if (data.length > 0) {
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].id === id) {
+                    result = {
+                        id: data[i].id,
+                        name: data[i].name,
+                        number: data[i].number
+                    };
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+    async findByIdAndUpdate(id, obj) {
+        const data = await this.getData(pathToData);
+        let newObj = null;
+        if (obj !== null) {
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].id === id) {
+                    newObj = {
+                        id: data[i].id,
+                        name: obj.name ? obj.name : data[i].name,
+                        number: obj.number ? obj.number : data[i].number
+                    };
+                    break;
+                }
+            }
+        }
+        return newObj;
+    }
+    async findOne(id, obj) {
+        const data = await this.getData(pathToData);
+        const found = data.find(item => item.id === id);
+        if (obj !== null) {
+            let newObj;
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].id === id) {
+                    newObj = {
+                        id: data[i].id,
+                        name: (obj === null || obj === void 0 ? void 0 : obj.name) ? obj.name : data[i].name,
+                        number: (obj === null || obj === void 0 ? void 0 : obj.number) ? obj.number : data[i].number
+                    };
+                    break;
+                }
+            }
+            return newObj;
+        }
+        return found;
+    }
     async removeData(id, path) {
         const data = await this.getData(path);
-        let dataToAdd;
+        let dataToAdd = '';
         if (data.length > 0) {
             const found = data.find((item) => item.id === id);
             if (typeof found === 'object') {
@@ -93,7 +148,7 @@ class DataBase {
                 if (newData.length > 0) {
                     while (count > 0) {
                         for (let i = 0; i < newData.length; i++) {
-                            dataToAdd = newData[i].id + " " + newData[i].name + ' ' + newData[i].number + ";";
+                            dataToAdd = `${newData[i].id} ${newData[i].name} ${newData[i].number};`;
                             count--;
                         }
                     }

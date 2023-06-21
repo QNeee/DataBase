@@ -3,12 +3,12 @@ import fs from 'fs/promises';
 import makeDir from 'make-dir';
 import { v4 as uuidv4 } from 'uuid';
 
-interface IData extends Object {
+interface IData {
     id?: string;
-    name: string;
-    number: number;
+    name?: string;
+    number?: number;
 }
-
+const pathToData = '/data.txt'
 export class DataBase {
     constructor(public path: string, public id: number) { }
 
@@ -22,8 +22,10 @@ export class DataBase {
             throw error;
         }
     }
-    async getData(path: string): Promise<object[]> {
-        const newArr = [];
+
+    async getData(path: string): Promise<IData[]> {
+
+        const newArr: IData[] = [];
         const filePath = await this.getPath() + path;
         const data: string = await fs.readFile(filePath, 'utf-8');
         const readedData = data.split(';');
@@ -32,17 +34,19 @@ export class DataBase {
                 if (readedData[i] === '') {
                     continue;
                 }
-                const newObj = {
-                    id: readedData[i].split(' ')[0],
-                    name: readedData[i].split(' ')[1],
-                    number: readedData[i].split(' ')[2]
-                }
+                const [id, name, number] = readedData[i].split(' ');
+                const newObj: IData = {
+                    id,
+                    name,
+                    number: parseInt(number)
+                };
                 newArr.push(newObj);
             }
             return newArr;
         }
         return [];
     }
+
     async getPath(): Promise<string> {
         return this.path + this.id;
     }
@@ -55,10 +59,11 @@ export class DataBase {
         }
         return 'DataBase Not found';
     }
+
     async addData(data: IData): Promise<string> {
         if (data) {
-            const dataToAdd = uuidv4() + " " + data.name + " " + data.number + ";"
-            const filePath = await this.getPath() + '/data.txt';
+            const dataToAdd = `${uuidv4()} ${data.name} ${data.number};`;
+            const filePath = await this.getPath() + pathToData;
 
             try {
                 const fileExists = await fs
@@ -72,10 +77,10 @@ export class DataBase {
                     await fs.writeFile(filePath, dataToAdd);
                 }
 
-                console.log('Data aded to file :', filePath);
+                console.log('Data added to file:', filePath);
                 return 'success';
             } catch (error) {
-                console.error('cant write to file:', error);
+                console.error('Unable to write to file:', error);
                 return 'error';
             }
         } else {
@@ -83,11 +88,65 @@ export class DataBase {
         }
     }
 
+    async findById(id: string): Promise<IData | null> {
+        const data: IData[] = await this.getData(pathToData);
+        let result: IData | null = null;
+        if (data.length > 0) {
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].id === id) {
+                    result = {
+                        id: data[i].id,
+                        name: data[i].name,
+                        number: data[i].number
+                    };
+                    break;
+                }
+            }
+        }
+        return result;
+    }
 
+    async findByIdAndUpdate(id: string, obj: IData): Promise<IData | null> {
+        const data: IData[] = await this.getData(pathToData);
+        let newObj: IData | null = null;
+        if (obj !== null) {
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].id === id) {
+                    newObj = {
+                        id: data[i].id,
+                        name: obj.name ? obj.name : data[i].name,
+                        number: obj.number ? obj.number : data[i].number
+                    };
+                    break;
+                }
+            }
+        }
+        return newObj;
+    }
+
+    async findOne(id: string, obj?: IData): Promise<IData | undefined> {
+        const data = await this.getData(pathToData);
+        const found: IData | undefined = data.find(item => item.id === id);
+        if (obj !== null) {
+            let newObj: IData | undefined;
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].id === id) {
+                    newObj = {
+                        id: data[i].id,
+                        name: obj?.name ? obj.name : data[i].name,
+                        number: obj?.number ? obj.number : data[i].number
+                    }
+                    break;
+                }
+            }
+            return newObj;
+        }
+        return found;
+    }
 
     async removeData(id: string, path: string): Promise<IData | undefined> {
-        const data: IData[] = await this.getData(path) as IData[];
-        let dataToAdd;
+        const data: IData[] = await this.getData(path);
+        let dataToAdd = '';
         if (data.length > 0) {
             const found = data.find((item: IData) => item.id === id);
             if (typeof found === 'object') {
@@ -96,7 +155,7 @@ export class DataBase {
                 if (newData.length > 0) {
                     while (count > 0) {
                         for (let i = 0; i < newData.length; i++) {
-                            dataToAdd = newData[i].id + " " + newData[i].name + ' ' + newData[i].number + ";"
+                            dataToAdd = `${newData[i].id} ${newData[i].name} ${newData[i].number};`;
                             count--;
                         }
                     }
