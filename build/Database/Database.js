@@ -42,6 +42,13 @@ class DataBase {
         this.id = id;
         this.pathToData = pathToData;
     }
+    async checkFileExists(path) {
+        const fileExists = await promises_1.default
+            .access(await this.getPath() + path)
+            .then(() => true)
+            .catch(() => false);
+        return fileExists;
+    }
     async init() {
         const port = process.env.PORT;
         try {
@@ -52,6 +59,23 @@ class DataBase {
         }
         catch (error) {
             process.exit(1);
+        }
+    }
+    async createSection(fileName) {
+        try {
+            const fullPath = await this.getPath() + fileName;
+            const fileExists = await this.checkFileExists(fileName);
+            if (!fileExists) {
+                await promises_1.default.writeFile(fullPath, '');
+                return 'File created';
+            }
+            else {
+                return 'Section already exists';
+            }
+        }
+        catch (error) {
+            console.error('Failed to create section:', error);
+            throw error;
         }
     }
     async createDatabase() {
@@ -66,11 +90,7 @@ class DataBase {
         }
     }
     async getData() {
-        const fileExists = await promises_1.default
-            .access(await this.getPath() + this.pathToData)
-            .then(() => true)
-            .catch(() => false);
-        console.log(fileExists);
+        const fileExists = await this.checkFileExists(this.pathToData);
         const newArr = [];
         if (!fileExists)
             return [];
@@ -110,18 +130,20 @@ class DataBase {
             const dataToAdd = `${(0, uuid_1.v4)()} ${data.name} ${data.number};`;
             const filePath = await this.getPath() + this.pathToData;
             try {
-                const fileExists = await promises_1.default
-                    .access(filePath)
-                    .then(() => true)
-                    .catch(() => false);
+                const fileExists = await this.checkFileExists(this.pathToData);
                 if (fileExists) {
                     await promises_1.default.appendFile(filePath, dataToAdd);
                 }
                 else {
                     await promises_1.default.writeFile(filePath, dataToAdd);
                 }
+                const response = {
+                    id: dataToAdd.split(' ')[0],
+                    name: data.name,
+                    number: data.number
+                };
                 console.log('Data added to file:', filePath);
-                return 'success';
+                return response;
             }
             catch (error) {
                 console.error('Unable to write to file:', error);

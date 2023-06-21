@@ -17,6 +17,14 @@ export class DataBase {
         this.id = id;
         this.pathToData = pathToData;
     }
+    async checkFileExists(path: string): Promise<boolean> {
+
+        const fileExists = await fs
+            .access(await this.getPath() + path)
+            .then(() => true)
+            .catch(() => false);
+        return fileExists;
+    }
     async init() {
         const port = process.env.PORT;
         try {
@@ -26,6 +34,23 @@ export class DataBase {
             })
         } catch (error) {
             process.exit(1);
+        }
+    }
+    async createSection(fileName: string): Promise<string> {
+        try {
+            const fullPath = await this.getPath() + fileName;
+
+            const fileExists = await this.checkFileExists(fileName);
+
+            if (!fileExists) {
+                await fs.writeFile(fullPath, '');
+                return 'File created';
+            } else {
+                return 'Section already exists';
+            }
+        } catch (error) {
+            console.error('Failed to create section:', error);
+            throw error;
         }
     }
     async createDatabase(): Promise<string | Error> {
@@ -40,11 +65,7 @@ export class DataBase {
     }
 
     async getData(): Promise<IData[]> {
-        const fileExists = await fs
-            .access(await this.getPath() + this.pathToData)
-            .then(() => true)
-            .catch(() => false);
-        console.log(fileExists);
+        const fileExists = await this.checkFileExists(this.pathToData);
         const newArr: IData[] = [];
         if (!fileExists) return [];
         const filePath = await this.getPath() + this.pathToData;
@@ -81,25 +102,26 @@ export class DataBase {
         return 'DataBase Not found';
     }
 
-    async addData(data: IData): Promise<string> {
+    async addData(data: IData): Promise<IData | string> {
         if (data) {
             const dataToAdd = `${uuidv4()} ${data.name} ${data.number};`;
             const filePath = await this.getPath() + this.pathToData;
 
             try {
-                const fileExists = await fs
-                    .access(filePath)
-                    .then(() => true)
-                    .catch(() => false);
+                const fileExists = await this.checkFileExists(this.pathToData);
 
                 if (fileExists) {
                     await fs.appendFile(filePath, dataToAdd);
                 } else {
                     await fs.writeFile(filePath, dataToAdd);
                 }
-
+                const response = {
+                    id: dataToAdd.split(' ')[0],
+                    name: data.name,
+                    number: data.number
+                }
                 console.log('Data added to file:', filePath);
-                return 'success';
+                return response;
             } catch (error) {
                 console.error('Unable to write to file:', error);
                 return 'error';
