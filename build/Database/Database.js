@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -7,11 +30,29 @@ exports.DataBase = void 0;
 const promises_1 = __importDefault(require("fs/promises"));
 const make_dir_1 = __importDefault(require("make-dir"));
 const uuid_1 = require("uuid");
-const pathToData = '/data.txt';
+const app_1 = require("../app");
+const dotenv = __importStar(require("dotenv"));
+dotenv.config();
 class DataBase {
-    constructor(path, id) {
+    constructor(path, id, pathToData) {
         this.path = path;
         this.id = id;
+        this.pathToData = pathToData;
+        this.path = path;
+        this.id = id;
+        this.pathToData = pathToData;
+    }
+    async init() {
+        const port = process.env.PORT;
+        try {
+            console.log('connect');
+            app_1.app.listen(port || 10000, () => {
+                console.log(`server started on ${port} port`);
+            });
+        }
+        catch (error) {
+            process.exit(1);
+        }
     }
     async createDatabase() {
         try {
@@ -24,9 +65,16 @@ class DataBase {
             throw error;
         }
     }
-    async getData(path) {
+    async getData() {
+        const fileExists = await promises_1.default
+            .access(await this.getPath() + this.pathToData)
+            .then(() => true)
+            .catch(() => false);
+        console.log(fileExists);
         const newArr = [];
-        const filePath = await this.getPath() + path;
+        if (!fileExists)
+            return [];
+        const filePath = await this.getPath() + this.pathToData;
         const data = await promises_1.default.readFile(filePath, 'utf-8');
         const readedData = data.split(';');
         if (readedData.length > 0) {
@@ -60,7 +108,7 @@ class DataBase {
     async addData(data) {
         if (data) {
             const dataToAdd = `${(0, uuid_1.v4)()} ${data.name} ${data.number};`;
-            const filePath = await this.getPath() + pathToData;
+            const filePath = await this.getPath() + this.pathToData;
             try {
                 const fileExists = await promises_1.default
                     .access(filePath)
@@ -85,7 +133,7 @@ class DataBase {
         }
     }
     async findById(id) {
-        const data = await this.getData(pathToData);
+        const data = await this.getData();
         let result = null;
         if (data.length > 0) {
             for (let i = 0; i < data.length; i++) {
@@ -102,7 +150,7 @@ class DataBase {
         return result;
     }
     async findByIdAndUpdate(id, obj) {
-        const data = await this.getData(pathToData);
+        const data = await this.getData();
         let newObj = null;
         if (obj !== null) {
             for (let i = 0; i < data.length; i++) {
@@ -119,7 +167,7 @@ class DataBase {
         return newObj;
     }
     async findOne(id, obj) {
-        const data = await this.getData(pathToData);
+        const data = await this.getData();
         const found = data.find(item => item.id === id);
         if (obj !== null) {
             let newObj;
@@ -138,7 +186,7 @@ class DataBase {
         return found;
     }
     async removeData(id, path) {
-        const data = await this.getData(path);
+        const data = await this.getData();
         let dataToAdd = '';
         if (data.length > 0) {
             const found = data.find((item) => item.id === id);

@@ -2,7 +2,9 @@
 import fs from 'fs/promises';
 import makeDir from 'make-dir';
 import { v4 as uuidv4 } from 'uuid';
-
+import { app } from '../app';
+import * as dotenv from 'dotenv';
+dotenv.config();
 interface IData {
     id?: string;
     name?: string;
@@ -15,7 +17,17 @@ export class DataBase {
         this.id = id;
         this.pathToData = pathToData;
     }
-
+    async init() {
+        const port = process.env.PORT;
+        try {
+            console.log('connect')
+            app.listen(port || 10000, () => {
+                console.log(`server started on ${port} port`)
+            })
+        } catch (error) {
+            process.exit(1);
+        }
+    }
     async createDatabase(): Promise<string | Error> {
         try {
             const fullPath = this.path + this.id;
@@ -28,8 +40,13 @@ export class DataBase {
     }
 
     async getData(): Promise<IData[]> {
-
+        const fileExists = await fs
+            .access(await this.getPath() + this.pathToData)
+            .then(() => true)
+            .catch(() => false);
+        console.log(fileExists);
         const newArr: IData[] = [];
+        if (!fileExists) return [];
         const filePath = await this.getPath() + this.pathToData;
         const data: string = await fs.readFile(filePath, 'utf-8');
         const readedData = data.split(';');
