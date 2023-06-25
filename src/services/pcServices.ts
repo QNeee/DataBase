@@ -20,3 +20,7 @@ export const updatePc = async (body: IPc) => {
     const updatedPc = dataBase.findByIdAndUpdate(body.id as string, { number: 1 }, pcs);
     return updatedPc;
 }
+export const removePc = async (id: string) => {
+    const removePc = await dataBase.removeData(id, pcs);
+    return removePc;
+}

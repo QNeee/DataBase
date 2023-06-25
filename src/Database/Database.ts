@@ -25,9 +25,8 @@ export class DataBase {
         this.id = id
     }
     async checkFileExists(path: string): Promise<boolean> {
-
         const fileExists = await fs
-            .access(await this.getPath() + path)
+            .access(path)
             .then(() => true)
             .catch(() => false);
         return fileExists;
@@ -48,7 +47,6 @@ export class DataBase {
             const fullPath = await this.getPath() + await section.getPath();
 
             const fileExists = await this.checkFileExists(fullPath);
-
             if (!fileExists) {
                 await fs.writeFile(fullPath, '');
                 return 'Section created';
@@ -71,12 +69,11 @@ export class DataBase {
         }
     }
 
-    async getData(section: string): Promise<IData[]> {
-        const fileExists = await this.checkFileExists(section);
+    async getData(path: string): Promise<IData[]> {
+        const fileExists = await this.checkFileExists(path);
         const newArr: IData[] = [];
         if (!fileExists) return [];
-        const filePath = await this.getPath() + section;
-        const data: string = await fs.readFile(filePath, 'utf-8');
+        const data: string = await fs.readFile(path, 'utf-8');
         const readedData = data.split(';');
         if (readedData.length > 0) {
             for (let i = 0; i < readedData.length; i++) {
@@ -114,7 +111,7 @@ export class DataBase {
             const dataToAdd = `${uuidv4()} ${data.name} ${data.number};`;
             const filePath = await this.getPath() + await section.getPath();
             try {
-                const fileExists = await this.checkFileExists(await section.getPath());
+                const fileExists = await this.checkFileExists(await this.getPath() + await section.getPath());
                 if (fileExists) {
                     await fs.appendFile(filePath, dataToAdd);
                 } else {
@@ -158,7 +155,6 @@ export class DataBase {
         const data: IData[] = await this.getData(await section.getPath());
         let newObj: IData | null = null;
         if (obj !== null) {
-            console.log('dada');
             for (let i = 0; i < data.length; i++) {
                 if (data[i].id === id) {
                     newObj = {
@@ -194,24 +190,39 @@ export class DataBase {
     }
 
     async removeData(id: string, section: Section): Promise<IData | undefined> {
-        const data: IData[] = await this.getData(await section.getPath());
+        const filepath = await this.getPath() + await section.getPath();
+        const data: IData[] = await this.getData(filepath);
+        const found = data.findIndex(item => item.id === id);
+        if (found === -1) return undefined;
+        let dataToAdd = '';
         if (data.length > 0) {
-            const found = data.find(item => item.id === id);
-            if (found) {
-                const newData = data.filter(item => item.id !== id);
-                let dataToAdd = '';
-                if (newData.length > 0) {
-                    for (let i = 0; i < newData.length; i++) {
-                        const { id, name, number } = newData[i];
-                        dataToAdd += `${id} ${name} ${number};\n`;
-                    }
-                }
-                await fs.writeFile(await this.getPath() + await section.getPath(), dataToAdd);
-                return found;
+            const foundData = data.find(item => item.id === id);
+            data.splice(found, 1);
+            for (let i = 0; i < data.length; i++) {
+                dataToAdd += `${data[i].id} ${data[i].name} ${data[i].number};`
             }
-        } else {
-            return undefined;
+            fs.writeFile(filepath, dataToAdd)
+            return foundData;
         }
+
         return undefined;
     }
+    //         const found = data.find(item => item.id === id);
+    //         if (found) {
+    //             const newData = data.filter(item => item.id !== id);
+    //             let dataToAdd = '';
+    //             if (newData.length > 0) {
+    //                 for (let i = 0; i < newData.length; i++) {
+    //                     const { id, name, number } = newData[i];
+    //                     dataToAdd += `${id} ${name} ${number};\n`;
+    //                 }
+    //             }
+    //             await fs.writeFile(await this.getPath() + await section.getPath(), dataToAdd);
+    //             return found;
+    //         }
+    //     } else {
+    //         return undefined;
+    //     }
+    //     return undefined;
+    // }
 }
