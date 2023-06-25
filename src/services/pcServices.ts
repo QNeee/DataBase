@@ -1,11 +1,7 @@
 import { dataBase } from ".."
 import { Section } from "../Database/Database"
+import { IPc } from "../types";
 
-interface IPc {
-    id?: string | undefined,
-    name: string,
-    number: number
-}
 export const pcs = new Section('/pcs.txt');
 export const postPc = async (body: IPc) => {
     if (body !== null) {
@@ -17,7 +13,7 @@ export const postPc = async (body: IPc) => {
     }
 }
 export const updatePc = async (body: IPc) => {
-    const updatedPc = dataBase.findByIdAndUpdate(body.id as string, { number: 1 }, pcs);
+    const updatedPc = dataBase.findByIdAndUpdate(body.id as string, body, pcs);
     return updatedPc;
 }
 export const removePc = async (id: string) => {

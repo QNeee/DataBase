@@ -4,12 +4,9 @@ import makeDir from 'make-dir';
 import { v4 as uuidv4 } from 'uuid';
 import { app } from '../app';
 import * as dotenv from 'dotenv';
+import { IData, IFarmer, IPc } from '../types';
 dotenv.config();
-export interface IData {
-    id?: string;
-    name?: string;
-    number: number;
-}
+
 export class Section {
     constructor(private path: string) {
         this.path = path;
@@ -25,6 +22,7 @@ export class DataBase {
         this.id = id
     }
     async checkFileExists(path: string): Promise<boolean> {
+        console.log(path);
         const fileExists = await fs
             .access(path)
             .then(() => true)
@@ -70,10 +68,11 @@ export class DataBase {
     }
 
     async getData(path: string): Promise<IData[]> {
-        const fileExists = await this.checkFileExists(path);
+        const fullPath = await this.getPath() + path
+        const fileExists = await this.checkFileExists(fullPath);
         const newArr: IData[] = [];
         if (!fileExists) return [];
-        const data: string = await fs.readFile(path, 'utf-8');
+        const data: string = await fs.readFile(fullPath, 'utf-8');
         const readedData = data.split(';');
         if (readedData.length > 0) {
             for (let i = 0; i < readedData.length; i++) {
@@ -106,7 +105,7 @@ export class DataBase {
         return 'DataBase Not found';
     }
 
-    async addData(data: IData, section: Section): Promise<IData | string> {
+    async addData(data: IData | IFarmer | IPc, section: Section): Promise<IData | string> {
         if (data) {
             const dataToAdd = `${uuidv4()} ${data.name} ${data.number};`;
             const filePath = await this.getPath() + await section.getPath();
@@ -162,9 +161,16 @@ export class DataBase {
                         name: obj.name ? obj.name : data[i].name,
                         number: obj.number ? obj.number : data[i].number
                     };
+                    const found = data.findIndex(item => item.id === id);
+                    data.splice(found, 1);
                     break;
                 }
             }
+            let dataToAdd = '';
+            for (let i = 0; i < data.length; i++) {
+                dataToAdd += `${data[i].id} ${data[i].name} ${data[i].number};`
+            }
+            await fs.writeFile(await this.getPath() + await section.getPath(), dataToAdd)
         }
         return newObj;
     }
@@ -207,22 +213,4 @@ export class DataBase {
 
         return undefined;
     }
-    //         const found = data.find(item => item.id === id);
-    //         if (found) {
-    //             const newData = data.filter(item => item.id !== id);
-    //             let dataToAdd = '';
-    //             if (newData.length > 0) {
-    //                 for (let i = 0; i < newData.length; i++) {
-    //                     const { id, name, number } = newData[i];
-    //                     dataToAdd += `${id} ${name} ${number};\n`;
-    //                 }
-    //             }
-    //             await fs.writeFile(await this.getPath() + await section.getPath(), dataToAdd);
-    //             return found;
-    //         }
-    //     } else {
-    //         return undefined;
-    //     }
-    //     return undefined;
-    // }
 }
