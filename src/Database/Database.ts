@@ -110,7 +110,6 @@ export class DataBase {
     }
 
     async addData(data: IData, section: Section): Promise<IData | string> {
-        // const fileExistsSection = await this.checkFileExists(await section.getPath());
         if (data) {
             const dataToAdd = `${uuidv4()} ${data.name} ${data.number};`;
             const filePath = await this.getPath() + await section.getPath();
@@ -159,6 +158,7 @@ export class DataBase {
         const data: IData[] = await this.getData(await section.getPath());
         let newObj: IData | null = null;
         if (obj !== null) {
+            console.log('dada');
             for (let i = 0; i < data.length; i++) {
                 if (data[i].id === id) {
                     newObj = {
