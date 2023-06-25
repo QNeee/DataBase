@@ -1,13 +1,13 @@
 import { dataBase } from "..";
 import { Section } from "../Database/Database";
-import { IFarmer } from "../types";
+import { IData } from "../types";
 
 export const farmers = new Section('/farmers.txt');
-export const postFarmer = async (body: IFarmer) => {
+export const postFarmer = async (body: IData) => {
     const farmer = await dataBase.addData(body, farmers);
     return farmer;
 }
-export const updateFarmer = async (id: string, body: IFarmer) => {
-    const updatedFarmer = await dataBase.findByIdAndUpdate(id, body, farmers)
-    return updatedFarmer;
-}
+// export const updateFarmer = async (id: string, body: IData) => {
+//     const updatedFarmer = await dataBase.findByIdAndUpdate(id, body, farmers)
+//     return updatedFarmer;
+// }

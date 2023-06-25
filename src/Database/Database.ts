@@ -4,7 +4,7 @@ import makeDir from 'make-dir';
 import { v4 as uuidv4 } from 'uuid';
 import { app } from '../app';
 import * as dotenv from 'dotenv';
-import { IData, IFarmer, IPc } from '../types';
+import { IData, IMessage } from '../types';
 dotenv.config();
 
 export class Section {
@@ -22,7 +22,6 @@ export class DataBase {
         this.id = id
     }
     async checkFileExists(path: string): Promise<boolean> {
-        console.log(path);
         const fileExists = await fs
             .access(path)
             .then(() => true)
@@ -43,7 +42,6 @@ export class DataBase {
     async createSection(section: Section): Promise<string> {
         try {
             const fullPath = await this.getPath() + await section.getPath();
-
             const fileExists = await this.checkFileExists(fullPath);
             if (!fileExists) {
                 await fs.writeFile(fullPath, '');
@@ -67,24 +65,35 @@ export class DataBase {
         }
     }
 
-    async getData(path: string): Promise<IData[]> {
-        const fullPath = await this.getPath() + path
+    async getData(path: string): Promise<IData[] | IMessage[]> {
+        const fullPath = await this.getPath() + path;
         const fileExists = await this.checkFileExists(fullPath);
         const newArr: IData[] = [];
         if (!fileExists) return [];
+        let newObj = {};
         const data: string = await fs.readFile(fullPath, 'utf-8');
         const readedData = data.split(';');
         if (readedData.length > 0) {
             for (let i = 0; i < readedData.length; i++) {
                 if (readedData[i] === '') {
                     continue;
+                } else if (readedData[i].includes('msg')) {
+                    const [id, from, to, date, content] = readedData[i].split(' ');
+                    newObj = {
+                        id,
+                        from,
+                        to,
+                        date,
+                        content
+                    }
+                } else {
+                    const [id, name, number] = readedData[i].split(' ');
+                    newObj = {
+                        id,
+                        name,
+                        number: parseInt(number)
+                    };
                 }
-                const [id, name, number] = readedData[i].split(' ');
-                const newObj: IData = {
-                    id,
-                    name,
-                    number: parseInt(number)
-                };
                 newArr.push(newObj);
             }
             return newArr;
@@ -105,9 +114,27 @@ export class DataBase {
         return 'DataBase Not found';
     }
 
-    async addData(data: IData | IFarmer | IPc, section: Section): Promise<IData | string> {
+    async addData(data: IData | IMessage, section: Section): Promise<IData | string> {
         if (data) {
-            const dataToAdd = `${uuidv4()} ${data.name} ${data.number};`;
+            let dataToAdd = '';
+            let response = {};
+            if ('name' in data && 'number' in data) {
+                dataToAdd = `${uuidv4()} ${data.name} ${data.number};`
+                response = {
+                    id: dataToAdd.split(' ')[0],
+                    name: data.name,
+                    number: data.number
+                }
+            } else if ('from' in data && 'to' in data && 'date' in data && 'content' in data) {
+                dataToAdd = `${uuidv4()} ${data.from} ${data.to} ${data.date?.toISOString()} ${data.content} msg;`
+                response = {
+                    id: dataToAdd.split(' ')[0],
+                    from: data.from,
+                    to: data.to,
+                    date: data.date,
+                    content: data.content
+                }
+            }
             const filePath = await this.getPath() + await section.getPath();
             try {
                 const fileExists = await this.checkFileExists(await this.getPath() + await section.getPath());
@@ -115,11 +142,6 @@ export class DataBase {
                     await fs.appendFile(filePath, dataToAdd);
                 } else {
                     await fs.writeFile(filePath, dataToAdd);
-                }
-                const response = {
-                    id: dataToAdd.split(' ')[0],
-                    name: data.name,
-                    number: data.number
                 }
                 console.log('Data added to file:', filePath);
                 return response;
@@ -132,17 +154,28 @@ export class DataBase {
         }
     }
 
-    async findById(id: string, section: Section): Promise<IData | null> {
-        const data: IData[] = await this.getData(await section.getPath());
-        let result: IData | null = null;
-        if (data.length > 0) {
-            for (let i = 0; i < data.length; i++) {
-                if (data[i].id === id) {
+    async findById(id: string, section: Section): Promise<IData | IMessage | null> {
+        const data = await this.getData(await section.getPath());
+        let result: IData | IMessage | null = null;
+        const index = data.findIndex(item => item.id === id);
+        if (index === -1) return result;
+        for (let i = 0; i < data.length; i++) {
+            if (data[i].id === id) {
+                if ('name' in data[i] || 'number' in data[i]) {
                     result = {
                         id: data[i].id,
-                        name: data[i].name,
-                        number: data[i].number
-                    };
+                        name: (data[i] as IData).name,
+                        number: (data[i] as IData).number
+                    }
+                    break;
+                } else if ('from' in data[i] || 'to' in data[i] || 'date' in data[i] || 'content' in data[i]) {
+                    result = {
+                        id: data[i].id,
+                        from: (data[i] as IMessage).from,
+                        to: (data[i] as IMessage).to,
+                        date: (data[i] as IMessage).date,
+                        content: (data[i] as IMessage).content,
+                    }
                     break;
                 }
             }
@@ -150,67 +183,97 @@ export class DataBase {
         return result;
     }
 
-    async findByIdAndUpdate(id: string, obj: IData, section: Section): Promise<IData | null> {
-        const data: IData[] = await this.getData(await section.getPath());
-        let newObj: IData | null = null;
+    async findByIdAndUpdate(id: string, obj: IData | IMessage, section: Section): Promise<IData | IMessage | null> {
+        const data = await this.getData(await section.getPath());
+        let newObj: IData | IMessage | null = null;
         if (obj !== null) {
+            const index = data.findIndex(item => item.id === id);
+            if (index === -1) return newObj;
             for (let i = 0; i < data.length; i++) {
                 if (data[i].id === id) {
-                    newObj = {
-                        id: data[i].id,
-                        name: obj.name ? obj.name : data[i].name,
-                        number: obj.number ? obj.number : data[i].number
-                    };
-                    const found = data.findIndex(item => item.id === id);
-                    data.splice(found, 1);
-                    break;
+                    if ('name' in data[i] || 'number' in data[i]) {
+                        newObj = {
+                            id: data[i].id,
+                            name: (obj as IData).name ? (obj as IData).name : (data[i] as IData).name,
+                            number: (obj as IData).number ? (obj as IData).number : (data[i] as IData).number
+                        }
+                    } else if ('from' in data[i] || 'to' in data[i] || 'date' in data[i] || 'content' in data[i]) {
+                        newObj = {
+                            id: data[i].id,
+                            from: (obj as IMessage).from ? (obj as IMessage).from : (data[i] as IMessage).from,
+                            to: (obj as IMessage).to ? (obj as IMessage).to : (data[i] as IMessage).to,
+                            date: (obj as IMessage).date ? (obj as IMessage).date : (data[i] as IMessage).date,
+                            content: (obj as IMessage).content ? (obj as IMessage).content : (data[i] as IMessage).content,
+                        }
+                    }
                 }
             }
+            data.splice(index, 1, newObj as object);
             let dataToAdd = '';
             for (let i = 0; i < data.length; i++) {
-                dataToAdd += `${data[i].id} ${data[i].name} ${data[i].number};`
+                if ('name' in data[i] && 'number' in data[i]) {
+                    dataToAdd += `${data[i].id} ${(data[i] as IData).name} ${(data[i] as IData).number};`
+                } else if ('from' in data[i] && 'to' in data[i] && 'date' in data[i] && 'content' in data[i]) {
+                    dataToAdd += `${data[i].id} ${(data[i] as IMessage).from} ${(data[i] as IMessage).to} ${(data[i] as IMessage).date} ${(data[i] as IMessage).content} msg;`
+                }
             }
             await fs.writeFile(await this.getPath() + await section.getPath(), dataToAdd)
+            return newObj;
         }
         return newObj;
     }
 
-    async findOne(section: Section, id: string, obj?: IData): Promise<IData | undefined> {
+    async findOne(section: Section, id: string, obj?: IData | IMessage): Promise<IData | IMessage | undefined> {
         const data = await this.getData(await section.getPath());
-        const found: IData | undefined = data.find(item => item.id === id);
+        const found = data.findIndex(item => item.id === id);
+        if (found === -1) return undefined;
         if (obj !== null) {
-            let newObj: IData | undefined;
+            let newObj: IData | IMessage | undefined;
             for (let i = 0; i < data.length; i++) {
                 if (data[i].id === id) {
-                    newObj = {
-                        id: data[i].id,
-                        name: obj?.name ? obj.name : data[i].name,
-                        number: obj?.number ? obj.number : data[i].number
+                    if ('name' in data[i] || 'number' in data[i]) {
+                        newObj = {
+                            id: data[i].id,
+                            name: (data[i] as IData).name,
+                            number: (data[i] as IData).number
+                        }
+                        break;
+                    } else if ('from' in data[i] || 'to' in data[i] || 'date' in data[i] || 'content' in data[i]) {
+                        newObj = {
+                            id: data[i].id,
+                            from: (data[i] as IMessage).from,
+                            to: (data[i] as IMessage).to,
+                            date: (data[i] as IMessage).date,
+                            content: (data[i] as IMessage).content,
+                        }
+                        break;
                     }
-                    break;
                 }
             }
             return newObj;
         }
-        return found;
+        return data[found];
     }
 
-    async removeData(id: string, section: Section): Promise<IData | undefined> {
-        const filepath = await this.getPath() + await section.getPath();
-        const data: IData[] = await this.getData(filepath);
-        const found = data.findIndex(item => item.id === id);
-        if (found === -1) return undefined;
+    async removeData(id: string, section: Section): Promise<IData | IMessage | undefined> {
+        const data: IData[] | IMessage[] = await this.getData(await section.getPath());
+        const filePath = await this.getPath() + await section.getPath();
         let dataToAdd = '';
         if (data.length > 0) {
-            const foundData = data.find(item => item.id === id);
-            data.splice(found, 1);
+            const index = data.findIndex(item => item.id === id);
+            if (index === -1) return undefined;
+            const found = data[index];
+            data.splice(index, 1);
             for (let i = 0; i < data.length; i++) {
-                dataToAdd += `${data[i].id} ${data[i].name} ${data[i].number};`
+                if ('name' in data[i] && 'number' in data[i]) {
+                    dataToAdd += `${data[i].id} ${(data[i] as IData).name} ${(data[i] as IData).number}`
+                } else if ('from' in data[i] && 'to' in data[i] && 'date' in data[i] && 'content' in data[i]) {
+                    dataToAdd += `${data[i].id} ${(data[i] as IMessage).from} ${(data[i] as IMessage).to} ${(data[i] as IMessage).date} ${(data[i] as IMessage).content} msg`
+                }
             }
-            fs.writeFile(filepath, dataToAdd)
-            return foundData;
+            fs.writeFile(filePath, dataToAdd)
+            return found;
         }
-
         return undefined;
     }
 }

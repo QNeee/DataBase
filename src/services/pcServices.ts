@@ -1,9 +1,9 @@
 import { dataBase } from ".."
 import { Section } from "../Database/Database"
-import { IPc } from "../types";
+import { IData } from "../types";
 
 export const pcs = new Section('/pcs.txt');
-export const postPc = async (body: IPc) => {
+export const postPc = async (body: IData) => {
     if (body !== null) {
         await dataBase.createSection(pcs);
         const adedData = await dataBase.addData(body, pcs);
@@ -12,11 +12,15 @@ export const postPc = async (body: IPc) => {
         throw new Error('no body');
     }
 }
-export const updatePc = async (body: IPc) => {
-    const updatedPc = dataBase.findByIdAndUpdate(body.id as string, body, pcs);
+export const updatePc = async (id: string, body: IData) => {
+    const updatedPc = dataBase.findByIdAndUpdate(id, body, pcs);
     return updatedPc;
 }
-export const removePc = async (id: string) => {
-    const removePc = await dataBase.removeData(id, pcs);
-    return removePc;
+export const getPcById = async (id: string) => {
+    const pc = dataBase.findById(id, pcs);
+    return pc;
 }
+// export const removePc = async (id: string) => {
+//     const removePc = await dataBase.removeData(id, pcs);
+//     return removePc;
+// }

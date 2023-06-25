@@ -1,7 +1,17 @@
-// import { dataBase } from ".."
-// import { v4 as uuidv4 } from 'uuid';
+import { dataBase } from "..";
+import { Section } from "../Database/Database";
+import { IMessage } from "../types";
 
-// export const getMessages = async () => {
-//     const messages = await dataBase.getData();
-//     return messages;
-// }
+export const msg = new Section('/msg.txt');
+export const postMessage = async (body: IMessage) => {
+    const message = await dataBase.addData(body, msg);
+    return message;
+}
+export const removeMessage = async (id: string) => {
+    const message = await dataBase.removeData(id, msg);
+    return message;
+}
+export const updateMessasge = async (body: IMessage) => {
+    const updatedMessage = await dataBase.findByIdAndUpdate(body.id as string, body, msg);
+    return updatedMessage;
+}
