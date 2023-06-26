@@ -1,13 +1,26 @@
-import { dataBase } from "..";
-import { Section } from "../Database/Database";
+import { dataBase, farmers } from "..";
+import { NotFound } from "../helpers/errors";
 import { IData } from "../types";
-
-export const farmers = new Section('/farmers.txt');
 export const postFarmer = async (body: IData) => {
     const farmer = await dataBase.addData(body, farmers);
     return farmer;
 }
-// export const updateFarmer = async (id: string, body: IData) => {
-//     const updatedFarmer = await dataBase.findByIdAndUpdate(id, body, farmers)
-//     return updatedFarmer;
-// }
+export const getFarmers = async () => {
+    const farmersData = await dataBase.getData(await farmers.getPath());
+    return farmersData;
+}
+export const getFarmerById = async (id: string) => {
+    const farmer = await dataBase.findById(id, farmers);
+    if (!farmer) throw new NotFound('Data not found');
+    return farmer;
+}
+export const updateFarmer = async (id: string, body: IData) => {
+    const updatedFarmer = await dataBase.findByIdAndUpdate(id, body, farmers);
+    if (!updatedFarmer) throw new NotFound('Data not found');
+    return updatedFarmer;
+}
+export const removeFarmer = async (id: string) => {
+    const removedFarmer = await dataBase.findByIdAndDelete(id, farmers);
+    if (removedFarmer === 'Data not found') throw new NotFound('Data not found');
+    return removedFarmer;
+}

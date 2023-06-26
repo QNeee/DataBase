@@ -1,8 +1,6 @@
-import { dataBase } from "..";
-import { Section } from "../Database/Database";
+import { dataBase, msg } from "..";
 import { IMessage } from "../types";
 
-export const msg = new Section('/msg.txt');
 export const postMessage = async (body: IMessage) => {
     const message = await dataBase.addData(body, msg);
     return message;

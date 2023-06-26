@@ -232,12 +232,9 @@ export class DataBase {
             let dataToAdd = '';
             for (let i = 0; i < data.length; i++) {
                 if ('name' in data[i] && 'number' in data[i]) {
-                    dataToAdd += `${data[i].id} ${(data[i] as IData).name} ${(data[i] as IData).number}`;
+                    dataToAdd += `${data[i].id} ${(data[i] as IData).name} ${(data[i] as IData).number};`;
                 } else if ('from' in data[i] && 'to' in data[i] && 'date' in data[i] && 'content' in data[i]) {
-                    dataToAdd += `${data[i].id} ${(data[i] as IMessage).from} ${(data[i] as IMessage).to} ${(data[i] as IMessage).date} ${(data[i] as IMessage).content} msg`;
-                }
-                if (i !== data.length - 1) {
-                    dataToAdd += ';';
+                    dataToAdd += `${data[i].id} ${(data[i] as IMessage).from} ${(data[i] as IMessage).to} ${(data[i] as IMessage).date} ${(data[i] as IMessage).content} msg;`;
                 }
             }
             const filePath = await this.getPath() + (await section.getPath());

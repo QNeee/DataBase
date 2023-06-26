@@ -1,8 +1,6 @@
-import { dataBase } from ".."
-import { Section } from "../Database/Database"
+import { dataBase, pcs } from ".."
 import { IData } from "../types";
 
-export const pcs = new Section('/pcs.txt');
 export const postPc = async (body: IData) => {
     if (body !== null) {
         await dataBase.createSection(pcs);
