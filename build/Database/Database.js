@@ -157,7 +157,6 @@ class DataBase {
         return 'DataBase Not found';
     }
     async addData(data, section) {
-        var _a;
         if (data) {
             let dataToAdd = '';
             let response = {};
@@ -170,7 +169,7 @@ class DataBase {
                 };
             }
             else if ('from' in data && 'to' in data && 'date' in data && 'content' in data) {
-                dataToAdd = `${(0, uuid_1.v4)()} ${data.from} ${data.to} ${(_a = data.date) === null || _a === void 0 ? void 0 : _a.toISOString()} ${data.content} msg;`;
+                dataToAdd = `${(0, uuid_1.v4)()} ${data.from} ${data.to} ${data.date} ${data.content} msg;`;
                 response = {
                     id: dataToAdd.split(' ')[0],
                     from: data.from,

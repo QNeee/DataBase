@@ -144,7 +144,7 @@ export class DataBase {
                     number: data.number,
                 };
             } else if ('from' in data && 'to' in data && 'date' in data && 'content' in data) {
-                dataToAdd = `${uuidv4()} ${data.from} ${data.to} ${data.date?.toISOString()} ${data.content} msg;`;
+                dataToAdd = `${uuidv4()} ${data.from} ${data.to} ${data.date} ${data.content} msg;`;
                 response = {
                     id: dataToAdd.split(' ')[0],
                     from: data.from,

@@ -4,6 +4,9 @@ exports.removeFarmer = exports.updateFarmer = exports.getFarmerById = exports.ge
 const __1 = require("..");
 const errors_1 = require("../helpers/errors");
 const postFarmer = async (body) => {
+    const { name, number } = body;
+    if (!name && !number)
+        throw new errors_1.WrongParams('need body');
     const farmer = await __1.dataBase.addData(body, __1.farmers);
     return farmer;
 };

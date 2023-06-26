@@ -1,7 +1,9 @@
 import { dataBase, farmers } from "..";
-import { NotFound } from "../helpers/errors";
+import { NotFound, WrongParams } from "../helpers/errors";
 import { IData } from "../types";
 export const postFarmer = async (body: IData) => {
+    const { name, number } = body;
+    if (!name && !number) throw new WrongParams('need body');
     const farmer = await dataBase.addData(body, farmers);
     return farmer;
 }
