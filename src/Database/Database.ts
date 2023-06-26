@@ -1,4 +1,3 @@
-
 import fs from 'fs/promises';
 import makeDir from 'make-dir';
 import { v4 as uuidv4 } from 'uuid';
@@ -15,12 +14,16 @@ export class Section {
         return this.path;
     }
 }
-export class DataBase {
-    constructor(private path: string, private id: number) {
 
+export class DataBase {
+    private lockedFiles: Set<string>;
+
+    constructor(private path: string, private id: number) {
         this.path = path;
-        this.id = id
+        this.id = id;
+        this.lockedFiles = new Set();
     }
+
     async checkFileExists(path: string): Promise<boolean> {
         const fileExists = await fs
             .access(path)
@@ -28,20 +31,34 @@ export class DataBase {
             .catch(() => false);
         return fileExists;
     }
+
+    async lockFile(filePath: string): Promise<void> {
+        while (this.lockedFiles.has(filePath)) {
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        this.lockedFiles.add(filePath);
+    }
+
+    async unlockFile(filePath: string): Promise<void> {
+        this.lockedFiles.delete(filePath);
+    }
+
     async init() {
         const port = process.env.PORT;
         try {
-            console.log('connect')
+            console.log('connect');
             app.listen(port || 10000, () => {
-                console.log(`server started on ${port} port`)
-            })
+                console.log(`server started on ${port} port`);
+            });
         } catch (error) {
             process.exit(1);
         }
     }
+
     async createSection(section: Section): Promise<string> {
         try {
-            const fullPath = await this.getPath() + await section.getPath();
+            const fullPath = await this.getPath() + (await section.getPath());
             const fileExists = await this.checkFileExists(fullPath);
             if (!fileExists) {
                 await fs.writeFile(fullPath, '');
@@ -54,6 +71,7 @@ export class DataBase {
             throw error;
         }
     }
+
     async createDatabase(): Promise<string | Error> {
         try {
             const fullPath = this.path + this.id;
@@ -84,14 +102,14 @@ export class DataBase {
                         from,
                         to,
                         date,
-                        content
-                    }
+                        content,
+                    };
                 } else {
                     const [id, name, number] = readedData[i].split(' ');
                     newObj = {
                         id,
                         name,
-                        number: parseInt(number)
+                        number: parseInt(number),
                     };
                 }
                 newArr.push(newObj);
@@ -119,27 +137,29 @@ export class DataBase {
             let dataToAdd = '';
             let response = {};
             if ('name' in data && 'number' in data) {
-                dataToAdd = `${uuidv4()} ${data.name} ${data.number};`
+                dataToAdd = `${uuidv4()} ${data.name} ${data.number};`;
                 response = {
                     id: dataToAdd.split(' ')[0],
                     name: data.name,
-                    number: data.number
-                }
+                    number: data.number,
+                };
             } else if ('from' in data && 'to' in data && 'date' in data && 'content' in data) {
-                dataToAdd = `${uuidv4()} ${data.from} ${data.to} ${data.date?.toISOString()} ${data.content} msg;`
+                dataToAdd = `${uuidv4()} ${data.from} ${data.to} ${data.date?.toISOString()} ${data.content} msg;`;
                 response = {
                     id: dataToAdd.split(' ')[0],
                     from: data.from,
                     to: data.to,
                     date: data.date,
-                    content: data.content
-                }
+                    content: data.content,
+                };
             }
-            const filePath = await this.getPath() + await section.getPath();
+            const filePath = await this.getPath() + (await section.getPath());
             try {
-                const fileExists = await this.checkFileExists(await this.getPath() + await section.getPath());
+                const fileExists = await this.checkFileExists(await this.getPath() + (await section.getPath()));
                 if (fileExists) {
+                    await this.lockFile(filePath);
                     await fs.appendFile(filePath, dataToAdd);
+                    await this.unlockFile(filePath);
                 } else {
                     await fs.writeFile(filePath, dataToAdd);
                 }
@@ -165,8 +185,8 @@ export class DataBase {
                     result = {
                         id: data[i].id,
                         name: (data[i] as IData).name,
-                        number: (data[i] as IData).number
-                    }
+                        number: (data[i] as IData).number,
+                    };
                     break;
                 } else if ('from' in data[i] || 'to' in data[i] || 'date' in data[i] || 'content' in data[i]) {
                     result = {
@@ -175,7 +195,7 @@ export class DataBase {
                         to: (data[i] as IMessage).to,
                         date: (data[i] as IMessage).date,
                         content: (data[i] as IMessage).content,
-                    }
+                    };
                     break;
                 }
             }
@@ -195,8 +215,8 @@ export class DataBase {
                         newObj = {
                             id: data[i].id,
                             name: (obj as IData).name ? (obj as IData).name : (data[i] as IData).name,
-                            number: (obj as IData).number ? (obj as IData).number : (data[i] as IData).number
-                        }
+                            number: (obj as IData).number ? (obj as IData).number : (data[i] as IData).number,
+                        };
                     } else if ('from' in data[i] || 'to' in data[i] || 'date' in data[i] || 'content' in data[i]) {
                         newObj = {
                             id: data[i].id,
@@ -204,76 +224,73 @@ export class DataBase {
                             to: (obj as IMessage).to ? (obj as IMessage).to : (data[i] as IMessage).to,
                             date: (obj as IMessage).date ? (obj as IMessage).date : (data[i] as IMessage).date,
                             content: (obj as IMessage).content ? (obj as IMessage).content : (data[i] as IMessage).content,
-                        }
+                        };
                     }
                 }
             }
-            data.splice(index, 1, newObj as object);
+            data.splice(index, 1, newObj as IData | IMessage);
             let dataToAdd = '';
             for (let i = 0; i < data.length; i++) {
                 if ('name' in data[i] && 'number' in data[i]) {
-                    dataToAdd += `${data[i].id} ${(data[i] as IData).name} ${(data[i] as IData).number};`
+                    dataToAdd += `${data[i].id} ${(data[i] as IData).name} ${(data[i] as IData).number}`;
                 } else if ('from' in data[i] && 'to' in data[i] && 'date' in data[i] && 'content' in data[i]) {
-                    dataToAdd += `${data[i].id} ${(data[i] as IMessage).from} ${(data[i] as IMessage).to} ${(data[i] as IMessage).date} ${(data[i] as IMessage).content} msg;`
+                    dataToAdd += `${data[i].id} ${(data[i] as IMessage).from} ${(data[i] as IMessage).to} ${(data[i] as IMessage).date} ${(data[i] as IMessage).content} msg`;
+                }
+                if (i !== data.length - 1) {
+                    dataToAdd += ';';
                 }
             }
-            await fs.writeFile(await this.getPath() + await section.getPath(), dataToAdd)
-            return newObj;
+            const filePath = await this.getPath() + (await section.getPath());
+            try {
+                const fileExists = await this.checkFileExists(await this.getPath() + (await section.getPath()));
+                if (fileExists) {
+                    await this.lockFile(filePath);
+                    await fs.writeFile(filePath, dataToAdd);
+                    await this.unlockFile(filePath);
+                } else {
+                    await fs.writeFile(filePath, dataToAdd);
+                }
+                return newObj;
+            } catch (error) {
+                console.error('Unable to write to file:', error);
+                return null;
+            }
+        } else {
+            return null;
         }
-        return newObj;
     }
 
-    async findOne(section: Section, id: string, obj?: IData | IMessage): Promise<IData | IMessage | undefined> {
+    async findByIdAndDelete(id: string, section: Section): Promise<IData | IMessage | string> {
         const data = await this.getData(await section.getPath());
-        const found = data.findIndex(item => item.id === id);
-        if (found === -1) return undefined;
-        if (obj !== null) {
-            let newObj: IData | IMessage | undefined;
-            for (let i = 0; i < data.length; i++) {
-                if (data[i].id === id) {
-                    if ('name' in data[i] || 'number' in data[i]) {
-                        newObj = {
-                            id: data[i].id,
-                            name: (data[i] as IData).name,
-                            number: (data[i] as IData).number
-                        }
-                        break;
-                    } else if ('from' in data[i] || 'to' in data[i] || 'date' in data[i] || 'content' in data[i]) {
-                        newObj = {
-                            id: data[i].id,
-                            from: (data[i] as IMessage).from,
-                            to: (data[i] as IMessage).to,
-                            date: (data[i] as IMessage).date,
-                            content: (data[i] as IMessage).content,
-                        }
-                        break;
-                    }
-                }
-            }
-            return newObj;
-        }
-        return data[found];
-    }
-
-    async removeData(id: string, section: Section): Promise<IData | IMessage | undefined> {
-        const data: IData[] | IMessage[] = await this.getData(await section.getPath());
-        const filePath = await this.getPath() + await section.getPath();
+        const index = data.findIndex(item => item.id === id);
+        const found = data[index];
+        if (index === -1) return 'Data not found';
+        data.splice(index, 1);
         let dataToAdd = '';
-        if (data.length > 0) {
-            const index = data.findIndex(item => item.id === id);
-            if (index === -1) return undefined;
-            const found = data[index];
-            data.splice(index, 1);
-            for (let i = 0; i < data.length; i++) {
-                if ('name' in data[i] && 'number' in data[i]) {
-                    dataToAdd += `${data[i].id} ${(data[i] as IData).name} ${(data[i] as IData).number}`
-                } else if ('from' in data[i] && 'to' in data[i] && 'date' in data[i] && 'content' in data[i]) {
-                    dataToAdd += `${data[i].id} ${(data[i] as IMessage).from} ${(data[i] as IMessage).to} ${(data[i] as IMessage).date} ${(data[i] as IMessage).content} msg`
-                }
+        for (let i = 0; i < data.length; i++) {
+            if ('name' in data[i] && 'number' in data[i]) {
+                dataToAdd += `${data[i].id} ${(data[i] as IData).name} ${(data[i] as IData).number}`;
+            } else if ('from' in data[i] && 'to' in data[i] && 'date' in data[i] && 'content' in data[i]) {
+                dataToAdd += `${data[i].id} ${(data[i] as IMessage).from} ${(data[i] as IMessage).to} ${(data[i] as IMessage).date} ${(data[i] as IMessage).content} msg`;
             }
-            fs.writeFile(filePath, dataToAdd)
-            return found;
+            if (i !== data.length - 1) {
+                dataToAdd += ';';
+            }
         }
-        return undefined;
+        const filePath = await this.getPath() + (await section.getPath());
+        try {
+            const fileExists = await this.checkFileExists(await this.getPath() + (await section.getPath()));
+            if (fileExists) {
+                await this.lockFile(filePath);
+                await fs.writeFile(filePath, dataToAdd);
+                await this.unlockFile(filePath);
+            } else {
+                await fs.writeFile(filePath, dataToAdd);
+            }
+            return found;
+        } catch (error) {
+            console.error('Unable to write to file:', error);
+            return 'error';
+        }
     }
 }

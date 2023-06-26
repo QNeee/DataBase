@@ -8,7 +8,7 @@ export const postMessage = async (body: IMessage) => {
     return message;
 }
 export const removeMessage = async (id: string) => {
-    const message = await dataBase.removeData(id, msg);
+    const message = await dataBase.findByIdAndDelete(id, msg);
     return message;
 }
 export const updateMessasge = async (body: IMessage) => {
